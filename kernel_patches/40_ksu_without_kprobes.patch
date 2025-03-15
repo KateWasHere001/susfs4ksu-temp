@@ -22,14 +22,12 @@ index 32f6f1c68..ed4c46169 100644
  	if (dentry->d_sb->s_magic != DEVPTS_SUPER_MAGIC)
  		return NULL;
  	return dentry->d_fsdata;
-diff --git a/fs/exec.c b/fs/exec.c
-index b1e9f35d7..3074d39a1 100644
---- a/fs/exec.c
-+++ b/fs/exec.c
-@@ -1715,11 +1715,25 @@ static int exec_binprm(struct linux_binprm *bprm)
- /*
-  * sys_execve() executes a new program.
-  */
+--- a/fs/exec.c	2025-03-15 16:41:08.910798020 +0800
++++ b/fs/exec.c	2025-03-15 16:51:17.464505987 +0800
+@@ -1888,11 +1888,26 @@
+ 	return retval;
+ }
+ 
 +#ifdef CONFIG_KSU
 +extern bool ksu_execveat_hook __read_mostly;
 +extern int ksu_handle_execveat(int *fd, struct filename **filename_ptr, void *argv,
@@ -37,6 +35,7 @@ index b1e9f35d7..3074d39a1 100644
 +extern int ksu_handle_execveat_sucompat(int *fd, struct filename **filename_ptr,
 +				 void *argv, void *envp, int *flags);
 +#endif
++
  static int do_execveat_common(int fd, struct filename *filename,
  			      struct user_arg_ptr argv,
  			      struct user_arg_ptr envp,
@@ -49,9 +48,8 @@ index b1e9f35d7..3074d39a1 100644
 +		ksu_handle_execveat_sucompat(&fd, &filename, &argv, &envp, &flags);
 +	#endif
 +
- 	char *pathbuf = NULL;
- 	struct linux_binprm *bprm;
- 	struct file *file;
+ 	return __do_execve_file(fd, filename, argv, envp, flags, NULL);
+ }
 diff --git a/fs/open.c b/fs/open.c
 index 2e5a9ccbe..8f3b6db8d 100644
 --- a/fs/open.c
