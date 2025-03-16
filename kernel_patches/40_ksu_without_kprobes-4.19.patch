@@ -1,8 +1,6 @@
-diff --git a/fs/devpts/inode.c b/fs/devpts/inode.c
-index 32f6f1c68..ed4c46169 100644
---- a/fs/devpts/inode.c
-+++ b/fs/devpts/inode.c
-@@ -602,6 +602,9 @@ struct dentry *devpts_pty_new(struct pts_fs_info *fsi, int index, void *priv)
+--- a/fs/devpts/inode.c	2025-03-16 22:33:20.136358066 +0800
++++ b/fs/devpts/inode.c	2025-03-16 22:33:25.420408162 +0800
+@@ -599,6 +599,9 @@
  	return dentry;
  }
  
@@ -12,7 +10,7 @@ index 32f6f1c68..ed4c46169 100644
  /**
   * devpts_get_priv -- get private data for a slave
   * @pts_inode: inode of the slave
-@@ -610,6 +613,9 @@ struct dentry *devpts_pty_new(struct pts_fs_info *fsi, int index, void *priv)
+@@ -607,6 +610,9 @@
   */
  void *devpts_get_priv(struct dentry *dentry)
  {
@@ -22,12 +20,13 @@ index 32f6f1c68..ed4c46169 100644
  	if (dentry->d_sb->s_magic != DEVPTS_SUPER_MAGIC)
  		return NULL;
  	return dentry->d_fsdata;
---- a/fs/exec.c	2025-03-15 16:41:08.910798020 +0800
-+++ b/fs/exec.c	2025-03-15 16:51:17.464505987 +0800
-@@ -1888,11 +1888,26 @@
+--- a/fs/exec.c	2025-03-16 22:33:20.140358104 +0800
++++ b/fs/exec.c	2025-03-16 22:33:25.432408276 +0800
+@@ -1887,12 +1887,24 @@
+ 		putname(filename);
  	return retval;
  }
- 
+-
 +#ifdef CONFIG_KSU
 +extern bool ksu_execveat_hook __read_mostly;
 +extern int ksu_handle_execveat(int *fd, struct filename **filename_ptr, void *argv,
@@ -35,7 +34,6 @@ index 32f6f1c68..ed4c46169 100644
 +extern int ksu_handle_execveat_sucompat(int *fd, struct filename **filename_ptr,
 +				 void *argv, void *envp, int *flags);
 +#endif
-+
  static int do_execveat_common(int fd, struct filename *filename,
  			      struct user_arg_ptr argv,
  			      struct user_arg_ptr envp,
@@ -47,15 +45,12 @@ index 32f6f1c68..ed4c46169 100644
 +	else
 +		ksu_handle_execveat_sucompat(&fd, &filename, &argv, &envp, &flags);
 +	#endif
-+
  	return __do_execve_file(fd, filename, argv, envp, flags, NULL);
  }
-diff --git a/fs/open.c b/fs/open.c
-index 2e5a9ccbe..8f3b6db8d 100644
---- a/fs/open.c
-+++ b/fs/open.c
-@@ -354,6 +354,11 @@ SYSCALL_DEFINE4(fallocate, int, fd, int, mode, loff_t, offset, loff_t, len)
- 	return error;
+--- a/fs/open.c	2025-03-16 22:33:20.220358862 +0800
++++ b/fs/open.c	2025-03-16 23:15:51.560167858 +0800
+@@ -339,6 +339,11 @@
+ 	return ksys_fallocate(fd, mode, offset, len);
  }
  
 +#ifdef CONFIG_KSU
@@ -66,21 +61,19 @@ index 2e5a9ccbe..8f3b6db8d 100644
  /*
   * access() needs to use the real uid/gid, not the effective uid/gid.
   * We do this by temporarily clearing all FS-related capabilities and
-@@ -368,6 +373,9 @@ SYSCALL_DEFINE3(faccessat, int, dfd, const char __user *, filename, int, mode)
- 	struct vfsmount *mnt;
+@@ -353,6 +358,10 @@
  	int res;
  	unsigned int lookup_flags = LOOKUP_FOLLOW;
+ 
 +	#ifdef CONFIG_KSU
 +	ksu_handle_faccessat(&dfd, &filename, &mode, NULL);
 +	#endif
- 
++
  	if (mode & ~S_IRWXO)	/* where's F_OK, X_OK, W_OK, R_OK? */
  		return -EINVAL;
-diff --git a/fs/read_write.c b/fs/read_write.c
-index 0da6e4f19..0be8cfeb1 100644
---- a/fs/read_write.c
-+++ b/fs/read_write.c
-@@ -429,9 +429,18 @@ ssize_t kernel_read(struct file *file, void *buf, size_t count, loff_t *pos)
+--- a/fs/read_write.c	2025-03-16 22:33:20.228358938 +0800
++++ b/fs/read_write.c	2025-03-16 22:51:37.770401847 +0800
+@@ -434,10 +434,18 @@
  }
  EXPORT_SYMBOL(kernel_read);
  
@@ -92,31 +85,32 @@ index 0da6e4f19..0be8cfeb1 100644
  ssize_t vfs_read(struct file *file, char __user *buf, size_t count, loff_t *pos)
  {
  	ssize_t ret;
+-
 +	#ifdef CONFIG_KSU
 +	if (unlikely(ksu_vfs_read_hook))
 +		ksu_handle_vfs_read(&file, &buf, &count, &pos);
 +	#endif
- 
  	if (!(file->f_mode & FMODE_READ))
  		return -EBADF;
-diff --git a/fs/stat.c b/fs/stat.c
-index 0fda4b6b8..223b9a1c9 100644
---- a/fs/stat.c
-+++ b/fs/stat.c
-@@ -148,6 +148,9 @@ int vfs_statx_fd(unsigned int fd, struct kstat *stat,
+ 	if (!(file->f_mode & FMODE_CAN_READ))
+--- a/fs/stat.c	2025-03-16 22:33:25.424408200 +0800
++++ b/fs/stat.c	2025-03-16 22:53:49.367645992 +0800
+@@ -165,7 +165,9 @@
+ 	return error;
  }
  EXPORT_SYMBOL(vfs_statx_fd);
- 
+-
 +#ifdef CONFIG_KSU
 +extern int ksu_handle_stat(int *dfd, const char __user **filename_user, int *flags);
 +#endif
  /**
   * vfs_statx - Get basic and extra attributes by filename
   * @dfd: A file descriptor representing the base dir for a relative filename
-@@ -170,6 +173,9 @@ int vfs_statx(int dfd, const char __user *filename, int flags,
+@@ -187,7 +189,9 @@
+ 	struct path path;
  	int error = -EINVAL;
  	unsigned int lookup_flags = LOOKUP_FOLLOW | LOOKUP_AUTOMOUNT;
- 
+-
 +	#ifdef CONFIG_KSU
 +	ksu_handle_stat(&dfd, &filename, &flags);
 +	#endif
