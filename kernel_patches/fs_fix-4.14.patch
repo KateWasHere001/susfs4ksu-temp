@@ -1,0 +1,73 @@
+--- a/fs/notify/fdinfo.c	2025-03-16 21:53:40.329938341 +0800
++++ b/fs/notify/fdinfo.c	2025-03-16 22:04:42.272239893 +0800
+@@ -90,6 +108,36 @@
+ 		 * used only internally to the kernel.
+ 		 */
+ 		u32 mask = mark->mask & IN_ALL_EVENTS;
++#ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
++		if (likely(current->susfs_task_state & TASK_STRUCT_NON_ROOT_USER_APP_PROC) &&
++				unlikely(inode->i_state & INODE_STATE_SUS_KSTAT)) {
++			struct path path;
++			char *pathname = kmalloc(PAGE_SIZE, GFP_KERNEL);
++			char *dpath;
++			if (!pathname) {
++				goto out_seq_printf;
++			}
++			dpath = d_path(&file->f_path, pathname, PAGE_SIZE);
++			if (!dpath) {
++				goto out_free_pathname;
++			}
++			if (kern_path(dpath, 0, &path)) {
++				goto out_free_pathname;
++			}
++			seq_printf(m, "inotify wd:%x ino:%lx sdev:%x mask:%x ignored_mask:0 ",
++			   inode_mark->wd, path.dentry->d_inode->i_ino, path.dentry->d_inode->i_sb->s_dev,
++			   mark);
++			show_mark_fhandle(m, path.dentry->d_inode);
++			seq_putc(m, '\n');
++			iput(inode);
++			path_put(&path);
++			kfree(pathname);
++			return;
++out_free_pathname:
++			kfree(pathname);
++		}
++out_seq_printf:
++#endif
+ 		seq_printf(m, "inotify wd:%x ino:%lx sdev:%x mask:%x ignored_mask:%x ",
+ 			   inode_mark->wd, inode->i_ino, inode->i_sb->s_dev,
+ 			   mask, mark->ignored_mask);
+--- a/fs/proc/cmdline.c	2025-03-16 21:53:45.501987675 +0800
++++ b/fs/proc/cmdline.c	2025-03-16 22:09:43.651043817 +0800
+@@ -4,8 +4,18 @@
+ #include <linux/proc_fs.h>
+ #include <linux/seq_file.h>
+ 
++#ifdef CONFIG_KSU_SUSFS_SPOOF_CMDLINE_OR_BOOTCONFIG
++extern int susfs_spoof_cmdline_or_bootconfig(struct seq_file *m);
++#endif
++
+ static int cmdline_proc_show(struct seq_file *m, void *v)
+ {
++#ifdef CONFIG_KSU_SUSFS_SPOOF_CMDLINE_OR_BOOTCONFIG
++	if (!susfs_spoof_cmdline_or_bootconfig(m)) {
++		seq_putc(m, '\n');
++		return 0;
++	}
++#endif
+ 	seq_printf(m, "%s\n", saved_command_line);
+ 	return 0;
+ }
+--- a/fs/proc/task_mmu.c	2025-03-16 21:53:45.501987675 +0800
++++ b/fs/proc/task_mmu.c	2025-03-16 22:11:39.288121541 +0800
+@@ -24,7 +24,9 @@
+ #include <asm/tlb.h>
+ #include <asm/tlbflush.h>
+ #include "internal.h"
+-
++#ifdef CONFIG_KSU_SUSFS_SUS_KSTAT
++#include <linux/susfs_def.h>
++#endif
+ void task_mem(struct seq_file *m, struct mm_struct *mm)
+ {
+ 	unsigned long text, lib, swap, ptes, pmds, anon, file, shmem;
