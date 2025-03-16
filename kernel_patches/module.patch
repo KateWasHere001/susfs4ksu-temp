@@ -26,34 +26,6 @@
  	}
  
  	if (!get_modinfo(info, "intree")) {
---- a/kernel/module.c	2025-03-14 13:48:48.913115248 +0800
-+++ b/kernel/module.c	2025-03-13 20:59:47.364734755 +0800
-@@ -1284,6 +1284,7 @@
- 			 struct module *mod,
- 			 const s32 *crc)
- {
-+  return 1;
- 	Elf_Shdr *sechdrs = info->sechdrs;
- 	unsigned int versindex = info->index.vers;
- 	unsigned int i, num_versions;
-@@ -2921,7 +2922,7 @@
- 	if (get_modinfo(info, "livepatch")) {
- 		pr_err("%s: module is marked as livepatch module, but livepatch support is disabled",
- 		       mod->name);
--		return -ENOEXEC;
-+		//return -ENOEXEC;
- 	}
- 
- 	return 0;
-@@ -3093,7 +3094,7 @@
- 	} else if (!same_magic(modmagic, vermagic, info->index.vers)) {
- 		pr_err("%s: version magic '%s' should be '%s'\n",
- 		       info->name, modmagic, vermagic);
--		return -ENOEXEC;
-+		//return -ENOEXEC;
- 	}
- 
- 	if (!get_modinfo(info, "intree")) {
 --- a/scripts/setlocalversion	2025-03-16 20:09:29.235318646 +0800
 +++ b/scripts/setlocalversion	2025-03-16 20:27:16.617374094 +0800
 @@ -49,6 +49,7 @@
