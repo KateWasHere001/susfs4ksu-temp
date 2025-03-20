@@ -209,7 +209,7 @@ diff -uNr a/fs/namei.c b/fs/namei.c
 +	}
 +	error = security_path_mknod(dir, dentry, mode, 0);
 +#else
-+ int error = security_path_mknod(dir, dentry, mode, 0);
++  int error = security_path_mknod(dir, dentry, mode, 0);
 +#endif
  	if (error)
  		return error;
